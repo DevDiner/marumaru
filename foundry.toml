@@ -1,6 +1,14 @@
 [profile.default]
-src = "src"
-out = "out"
-libs = ["node_modules", "lib"]
-
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+src = "contracts/src"
+test = "contracts/test"
+script = "contracts/script"
+solc = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+remappings = [
+  "forge-std/=lib/forge-std/src/"
+]
+# NOTE: our contracts do NOT import @ensdomains/contracts-v2, ENSv2 is injected via our
+# own contracts/src/interfaces/IENSv2.sol (mock in tests, real Sepolia addrs at deploy).
+# So forge-std is the ONLY Foundry lib needed. Do not add a contracts-v2 remapping.
+fs_permissions = [{ access = "read-write", path = "./" }]
