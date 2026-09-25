@@ -1,5 +1,5 @@
 // Static balance check for Solidity files (forge is absent on the editing box).
-// Verifies {}/()/[]/ balance ignoring comments and strings. NOT a compiler —
+// Verifies {}/()/[]/ balance ignoring comments and strings. NOT a compiler ( checking on formatting)
 // the authoritative check is `forge test` on the build machine.
 import fs from 'node:fs';
 
