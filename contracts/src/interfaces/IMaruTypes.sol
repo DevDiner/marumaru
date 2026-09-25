@@ -9,7 +9,7 @@ pragma solidity ^0.8.24;
 /// introducing bands to make it harder to infer the exact income from the credential. The band is a public claim.
 /// Bucket edges are multiples of policyIncomeMin (grounded in loan-to-income limits)
 
-enum CredentialKind { Income, Savings, Human, Dsr, IncomeBand } // + maru.income_band
+enum CredentialKind { Income, Savings, Human, Dsr, IncomeBand } 
 
 struct PassportView {
     address owner;
