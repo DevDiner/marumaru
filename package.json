@@ -1,0 +1,13 @@
+{
+  "name": "marumaru",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MaruMaru — a borrower-owned financial passport: prove mortgage facts, reveal nothing else. ETHGlobal Tokyo 2026.",  "dependencies": {
+    "@worldcoin/idkit": "^4.2.3",
+    "@worldcoin/idkit-core": "^4.2.3",
+    "@reclaimprotocol/js-sdk": "^5.8.2",
+    "ethers": "^5.8.0",
+    "dotenv": "^16.4.5"
+  }
+}
