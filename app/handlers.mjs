@@ -113,7 +113,20 @@ function resolverClient(store) {
   const addrs = onchainReadsEnabled();
   if (addrs) {
     try {
-      return makeOnchainClient({ rpc: process.env.SEPOLIA_RPC, addrs, parent: process.env.PARENT_NAME || 'marumaru.eth' });
+      const chain = makeOnchainClient({ rpc: process.env.SEPOLIA_RPC, addrs, parent: process.env.PARENT_NAME || 'marumaru.eth' });
+      const local = makeClient(store);
+      // HYBRID (ONCHAIN_READS=1): the passport MARKS are read LIVE from the Sepolia resolver (text →
+      // ENSIP-10 resolve) — that's the "functional, not hard-coded" ENS proof. CONSENT + expiry stay
+      // store-backed: the marks were issuer-written directly to the resolver (the beta registrar's
+      // setText ABI didn't match our contract), so the on-chain registrar has no per-lender consent
+      // ledger for them. Reading marks on-chain + consent off-store is the honest, working split —
+      // and if a label has NO on-chain marks yet, text() returns '' and the caller shows nothing,
+      // exactly as the store path would for an unknown name.
+      return {
+        text: chain.text,
+        isLenderAuthorized: local.isLenderAuthorized,
+        passportExpired: local.passportExpired,
+      };
     } catch { /* fall through to store — never break the demo on a wiring slip */ }
   }
   return makeClient(store);

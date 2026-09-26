@@ -1,225 +1,161 @@
-// demo/worldid-widget.js
-// World ID frontend: obtain a server-signed request, launch IDKit,
-// then return the proof to the caller for backend verification.
-//
-// Configuration is supplied through MaruWorldID.configure(...).
-// The RP signing key stays on the server.
+// Backend World ID signing and verification.
+// Browser IDKit code belongs in demo/worldid-widget.js.
 
-import {
-  IDKit,
-  orbLegacy,
-  documentLegacy,
-  selfieCheckLegacy,
-} from '/vendor/idkit-core.js';
+import { createRequire } from 'node:module';
+import { getNulls, saveNulls } from './store.mjs';
 
-const PRESET = {
-  orb: orbLegacy,
-  passport: documentLegacy,
-  selfie: selfieCheckLegacy,
-};
+const cjsRequire = createRequire(import.meta.url);
 
-window.MaruWorldID = (function () {
-  let CFG = {
-    mode: 'mock',
-    env: 'staging',
-    appId: '',
-    rpId: '',
-    action: 'marumaru-issue',
-  };
+export function _resetNullifiers() {
+  saveNulls({});
+}
 
-  function configure(cfg) {
-    CFG = { ...CFG, ...cfg };
+export function canonicalLevel(value) {
+  const s = String(value || '').toLowerCase();
+
+  if (['orb', 'proof_of_human', 'proofofhuman'].includes(s)) {
+    return 'orb';
   }
 
-  // Read the response as text first: hosting errors may not be JSON.
-  async function signRequest(action) {
-    let response;
-
-    try {
-      response = await fetch('/api/sign-request', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          accept: 'application/json',
-        },
-        body: JSON.stringify({ action }),
-      });
-    } catch {
-      throw new Error(
-        'Could not reach /api/sign-request. Check that the backend is running and reachable.',
-      );
-    }
-
-    const raw = await response.text();
-    const preview = raw.replace(/\s+/g, ' ').trim().slice(0, 400);
-
-    if (!response.ok) {
-      throw new Error(
-        `/api/sign-request failed (HTTP ${response.status}): ` +
-          (preview || 'Empty response. Check the backend logs.'),
-      );
-    }
-
-    let data;
-
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      throw new Error(
-        `/api/sign-request returned non-JSON (HTTP ${response.status}): ` +
-          (preview || 'Empty response.'),
-      );
-    }
-
-    if (!data || typeof data !== 'object' || Array.isArray(data)) {
-      throw new Error(
-        '/api/sign-request returned an invalid response object.',
-      );
-    }
-
-    if (data.success === false || data.error) {
-      const message =
-        typeof data.error === 'string'
-          ? data.error
-          : data.error?.message || data.message || data.code;
-
-      throw new Error(
-        `/api/sign-request rejected the request: ${
-          message || 'Check the backend logs.'
-        }`,
-      );
-    }
-
-    if (
-      typeof data.sig !== 'string' ||
-      !data.sig ||
-      typeof data.nonce !== 'string' ||
-      !data.nonce ||
-      data.created_at == null ||
-      data.expires_at == null
-    ) {
-      throw new Error(
-        '/api/sign-request is missing sig, nonce, created_at, or expires_at.',
-      );
-    }
-
-    return data;
+  if (
+    ['passport', 'document', 'secure_document', 'securedocument'].includes(s)
+  ) {
+    return 'passport';
   }
 
-  async function requestProofOfHuman({
-    action = CFG.action,
-    signal = 'human-1',
-    humanId,
-    method = 'orb',
-    onConnect,
-  } = {}) {
-    const selectedMethod = Object.prototype.hasOwnProperty.call(
-      PRESET,
-      method,
-    )
-      ? method
-      : 'orb';
+  if (['selfie', 'face', 'selfie_check', 'selfiecheck'].includes(s)) {
+    return 'selfie';
+  }
 
-    const preset = PRESET[selectedMethod];
+  if (s === 'device') return 'device';
 
-    if (CFG.mode !== 'mock' && CFG.mode !== 'real') {
-      throw new Error(
-        `Invalid World ID mode "${CFG.mode}". Expected "mock" or "real".`,
-      );
-    }
+  return 'unknown';
+}
 
-    if (CFG.mode === 'real') {
-      if (!CFG.appId || !CFG.rpId) {
-        throw new Error(
-          'World ID configuration is missing appId or rpId. Check /api/world-config and the server environment variables.',
-        );
-      }
-
-      if (CFG.env !== 'staging' && CFG.env !== 'production') {
-        throw new Error(
-          `Invalid World ID environment "${CFG.env}". Expected "staging" or "production".`,
-        );
-      }
-
-      if (typeof signal !== 'string' || !signal.trim()) {
-        throw new Error(
-          'A non-empty issuance-session signal is required.',
-        );
-      }
-    }
-
-    // Preserve the existing behavior: exercise the backend signing
-    // endpoint in both modes. Real failures do not fall back to mock.
-    const sig = await signRequest(action);
-
-    if (CFG.mode === 'mock') {
-      // Use a stable mock persona identifier when supplied.
-      // The signal remains the separate issuance-session binding.
-      const nullifier = humanId || signal;
-
-      return {
-        idkitResponse:
-          `MOCK-HUMAN:${nullifier}:${signal}:${selectedMethod}`,
-        connectorURI: null,
-        method: selectedMethod,
-      };
-    }
-
-    if (sig.sig === '0xMOCK') {
-      throw new Error(
-        'The frontend is in real mode, but the backend returned a mock signature. Set WORLD_ID_MODE=real on the backend and restart or redeploy.',
-      );
-    }
-
-    const request = await IDKit.request({
-      app_id: CFG.appId,
-      action,
-      rp_context: {
-        rp_id: CFG.rpId,
-        nonce: sig.nonce,
-        created_at: sig.created_at,
-        expires_at: sig.expires_at,
-        signature: sig.sig,
-      },
-      allow_legacy_proofs: true,
-      environment: CFG.env,
-    }).preset(preset({ signal }));
-
-    const connectorURI = request.connectorURI;
-
-    if (!connectorURI) {
-      throw new Error(
-        'IDKit did not return a connector URI.',
-      );
-    }
-
-    if (typeof onConnect === 'function') {
-      onConnect(connectorURI);
-    }
-
-    const done = request.pollUntilCompletion().then((response) => ({
-      idkitResponse: response,
-      connectorURI,
-      method: selectedMethod,
-    }));
-
+export async function signRequest({ action }) {
+  if ((process.env.WORLD_ID_MODE || 'mock') === 'mock') {
     return {
-      connectorURI,
-      done,
-      method: selectedMethod,
+      sig: '0xMOCK',
+      nonce: 'mock-nonce',
+      created_at: 0,
+      expires_at: 0,
     };
   }
 
+  if (!process.env.WORLD_RP_SIGNING_KEY) {
+    throw new Error('WORLD_RP_SIGNING_KEY is missing on the backend.');
+  }
+
+  const { signRequest: sdkSignRequest } =
+    cjsRequire('@worldcoin/idkit-core/signing');
+
+  const signed = await sdkSignRequest({
+    signingKeyHex: process.env.WORLD_RP_SIGNING_KEY,
+    action,
+  });
+
   return {
-    configure,
-    requestProofOfHuman,
-
-    get mode() {
-      return CFG.mode;
-    },
-
-    get env() {
-      return CFG.env;
-    },
+    sig: signed.sig,
+    nonce: signed.nonce,
+    created_at: signed.createdAt ?? signed.created_at,
+    expires_at: signed.expiresAt ?? signed.expires_at,
   };
-})();
+}
+
+// Restores the verification behavior from your previously pasted backend.
+// Real-mode session binding must be checked by the calling backend code;
+// returning `signal` here is not itself cryptographic binding verification.
+export async function verifyHuman({
+  idkitResponse,
+  rpId,
+  action,
+  signal,
+  hasLivePassport,
+}) {
+  const mode = process.env.WORLD_ID_MODE || 'mock';
+
+  let nullifier;
+  let boundSignal = signal;
+  let level;
+
+  if (mode === 'mock') {
+    if (
+      typeof idkitResponse !== 'string' ||
+      !idkitResponse.startsWith('MOCK-HUMAN')
+    ) {
+      return { success: false, code: 'invalid_mock' };
+    }
+
+    const parts = idkitResponse.split(':');
+
+    nullifier = parts[1] || 'mock-nullifier';
+
+    if (parts[2] !== undefined) {
+      boundSignal = parts[2];
+    }
+
+    level = canonicalLevel(parts[3] || 'orb');
+  } else {
+    const response = await fetch(
+      `https://developer.world.org/api/v4/verify/${rpId}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(idkitResponse),
+      },
+    );
+
+    if (!response.ok) {
+      return { success: false, code: 'verification_error' };
+    }
+
+    const body = await response.json();
+
+    if (!body.success) {
+      return {
+        success: false,
+        code: body.code || 'failed',
+      };
+    }
+
+    const results = Array.isArray(body.results) ? body.results : [];
+
+    const result =
+      results.find(
+        (r) => r && (r.identifier === 'proof_of_human' || r.nullifier),
+      ) || results[0];
+
+    nullifier = result?.nullifier;
+
+    if (!nullifier) {
+      return { success: false, code: 'missing_nullifier' };
+    }
+
+    level = canonicalLevel(
+      result.verification_level || result.identifier,
+    );
+  }
+
+  if (typeof hasLivePassport === 'function') {
+    if (await hasLivePassport(nullifier)) {
+      return { success: false, code: 'nullifier_already_used' };
+    }
+  } else {
+    const store = getNulls();
+    const key = `${action}:${nullifier}`;
+
+    if (store[key]) {
+      return { success: false, code: 'nullifier_already_used' };
+    }
+
+    store[key] = Date.now();
+    saveNulls(store);
+  }
+
+  return {
+    success: true,
+    nullifier,
+    signal: boundSignal,
+    level,
+  };
+}

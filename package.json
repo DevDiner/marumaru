@@ -3,11 +3,27 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MaruMaru — a borrower-owned financial passport: prove mortgage facts, reveal nothing else. ETHGlobal Tokyo 2026.",  "dependencies": {
-    "@worldcoin/idkit": "^4.2.3",
-    "@worldcoin/idkit-core": "^4.2.3",
+  "description": "MaruMaru — a borrower-owned financial passport: prove mortgage facts, reveal nothing else. ETHGlobal Tokyo 2026.",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "check:env": "bash scripts/check_env.sh",
+    "test": "node --test app/*.test.mjs",
+    "demo": "node demo/server.mjs",
+    "demo:seed": "node demo/deploy_demo.mjs",
+    "provision": "node scripts/provision_parent.mjs",
+    "deploy": "node scripts/deploy_ensv2.mjs",
+    "gen:attestor-key": "node scripts/gen_attestor_key.mjs",
+    "plaid:test": "node scripts/plaid_sandbox_test.mjs"
+  },
+  "dependencies": {
     "@reclaimprotocol/js-sdk": "^5.8.2",
+    "@worldcoin/idkit": "^4.2.3",
+    "@worldcoin/idkit-core": "^4.3.0",
+    "dotenv": "^16.4.5",
     "ethers": "^5.8.0",
-    "dotenv": "^16.4.5"
+    "plaid": "^27.0.0",
+    "qrcode": "^1.5.4"
   }
 }
