@@ -55,6 +55,14 @@ window.MaruWorldID = (function () {
       return { idkitResponse: `MOCK-HUMAN:${nullifier}:${signal}:${method}`, connectorURI: null, method };
     }
 
+    // REAL mode but the server couldn't sign (missing/placeholder creds) → fail with a CLEAR, actionable
+    // message instead of feeding a broken signature into IDKit (which throws a vague error, misread as
+    // "Could not reach /api/sign-request"). The server returns {error, detail} rather than a signature.
+    if (!sig || sig.error || !sig.sig || sig.sig === '0xMOCK') {
+      const why = (sig && (sig.detail || sig.error)) || 'no signature returned';
+      throw new Error(`World ID is in REAL mode but the server can't sign (${why}). Set WORLD_ID_MODE=mock in .env for the demo, or paste real WORLD_APP_ID / WORLD_RP_ID / WORLD_RP_SIGNING_KEY from developer.world.org.`);
+    }
+
     // REAL: build the request, hand back the connect URL, and poll to completion.
     // Shape matches docs.world.org/world-id/idkit/integrate Step 4 EXACTLY: top-level app_id + action,
     // rp_context carries the RP signature as `signature` (+ nonce/created_at/expires_at), legacy preset.

@@ -40,6 +40,105 @@
 
 <script type="module" src="/worldid-widget.js"></script>
 <script type="module">
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// STATIC-DEPLOY FALLBACK — if there's NO /api backend (e.g. a static-only Vercel deploy that only
+// shipped demo/index.html), every /api/* call would 404 and the demo would die at Step 1. This shim
+// detects that once, and if there's no backend it answers /api/* + /bank/* IN THE BROWSER with the
+// same JSON the Node server returns — a full client-side mock (localStorage-backed store). Result:
+// the deployed page behaves EXACTLY like `npm run demo` in mock mode, with zero backend. When a real
+// backend IS present, the shim stays out of the way (native fetch is used unchanged).
+(function installApiFallback(){
+  const NATIVE = window.fetch.bind(window);
+  let backend = null;            // null=unknown, true=real backend, false=none (use client mock)
+  const store = {
+    get p(){ try { return JSON.parse(localStorage.getItem('maru.mockdb')||'{}'); } catch { return {}; } },
+    set p(v){ localStorage.setItem('maru.mockdb', JSON.stringify(v)); },
+  };
+  const J = (obj, status=200) => new Response(JSON.stringify(obj), { status, headers:{'content-type':'application/json'} });
+  const now = () => Math.floor(Date.now()/1000);
+  const namehashDemo = 'client-mock (deploy the /api backend for the real EIP-137 namehash)';
+
+  // The persona figures the server holds — mirrored here so mock marks match the real flow.
+  const PERSONAS = { aiko:{holder:'Aiko Tanaka',income:12000,savings:62500,debt:3600}, kenji:{holder:'Kenji Sato',income:7500,savings:22000,debt:3750} };
+  const POLICY = { incomeMin:10000, savingsMin:50000 };
+  const bandOf = (inc) => { const m=inc/POLICY.incomeMin; return m<1?'<1x':m<1.5?'1-1.5x':m<2?'1.5-2x':'2x+'; };
+
+  async function probeBackend(){
+    if (backend !== null) return backend;
+    try { const r = await NATIVE('/api/world-config'); backend = r.ok && (r.headers.get('content-type')||'').includes('json'); }
+    catch { backend = false; }
+    if (!backend) console.info('[MaruMaru] no /api backend detected — running the full demo client-side (mock).');
+    return backend;
+  }
+
+  // Handle one mocked route. Returns a Response or null (null → let native fetch run).
+  function mockRoute(method, path, body, url){
+    const db = store.p;
+    if (path === '/api/world-config') return J({ mode:'mock', env:'staging', action:'marumaru-issue', onchain:false, resolver:'', _clientmock:true });
+    if (path === '/api/sign-request') return J({ sig:'0xMOCK', nonce:'mock-nonce', created_at:0, expires_at:0 });
+    if (path === '/api/verify-human') {
+      const s = body.idkitResponse||''; const parts = String(s).split(':');
+      if (!s.startsWith('MOCK-HUMAN')) return J({ success:false, code:'invalid_mock' });
+      const nf = parts[1]||'mock-nullifier'; const level = parts[3]||'orb';
+      // one-live-passport-per-human: reject if a passport with this nullifier already exists
+      const live = Object.values(db).some(x=>x&&x.nullifier===nf&&(x.expiry===0||x.expiry>now()));
+      if (live) return J({ success:false, code:'nullifier_already_used' });
+      const sub = '0x'+Array.from(nf).reduce((h,c)=>((h*33+c.charCodeAt(0))>>>0),5381).toString(16).padStart(16,'0');
+      return J({ success:true, signal:parts[2]||'', level, sub });
+    }
+    if (path === '/api/bank-attest') {
+      const who = PERSONAS[body.persona] ? body.persona : 'aiko'; const a = PERSONAS[who];
+      const claim = { holder:a.holder, income:a.income, savings:a.savings, debt:a.debt, issuedAt:now() };
+      return J({ claim, signature:'0xED25519-MOCK-'+who, pubkey:'mock-bank-key' });
+    }
+    if (path === '/api/verify-attestation') {
+      const c = body.claim||{}; const forged = String(body.signature||'').includes('999999') || c.income===999999;
+      const marks = { income: c.income>=POLICY.incomeMin?'pass':'not-met', savings: c.savings>=POLICY.savingsMin?'pass':'not-met' };
+      return J({ verified: !forged, marks });
+    }
+    if (path === '/api/issue') {
+      const s = body.idkitResponse||''; const parts=String(s).split(':'); const nf=parts[1]||'mock-nullifier'; const level=parts[3]||'orb';
+      const live = Object.entries(db).some(([l,x])=>x&&x.nullifier===nf&&(x.expiry===0||x.expiry>now()));
+      if (live) return J({ status:'rejected', reason:'already-has-passport' });
+      const inc = parseInt((body.incomeProof||'').split(':')[1]||'0',10);
+      const sav = parseInt((body.savingsProof||'').split(':')[1]||'0',10);
+      if (!(inc>=POLICY.incomeMin) || !(sav>=POLICY.savingsMin)) return J({ status:'proof-failed' });
+      const label = body.label||'aiko'; const expiry = now()+30*86400;
+      const marks = { income:'pass', savings:'pass', human:'verified', assurance:level, incomeBand:bandOf(inc) };
+      db[label] = { owner:'0xB0B', nullifier:nf, soulbound:true, marks, lenders:{}, expiry, sub:'' };
+      store.p = db;
+      return J({ status:'issued', marks, expiry, namehash: namehashDemo, sub:'' });
+    }
+    const pm = path.match(/^\/api\/passport\/(.+)$/);
+    if (pm) { const rec = db[decodeURIComponent(pm[1])]; return rec ? J(rec) : J({ error:'no passport' }, 404); }
+    if (path === '/api/grant') { const {label,lender,days}=body; if(db[label]){ db[label].lenders=db[label].lenders||{}; db[label].lenders[lender]=now()+ (days||14)*86400; store.p=db; } return J({ ok:true }); }
+    if (path === '/api/revoke') { const {label,lender}=body; if(db[label]&&db[label].lenders){ delete db[label].lenders[lender]; store.p=db; } return J({ ok:true, revoked:lender }); }
+    const dm = path.match(/^\/api\/detail\/(.+)$/);
+    if (dm) { const label=decodeURIComponent(dm[1]); const lender=url.searchParams.get('lender'); const rec=db[label];
+      const authed = rec && rec.lenders && rec.lenders[lender] > now();
+      if (!authed) return J({ authorized:false, expired:false });
+      return J({ authorized:true, marks:rec.marks, provenance:{attestor:'reclaim-protocol (mock)',proofRef:null,attestedAt:now(),expiry:rec.expiry}, source:'zktls-attested', note:'client-mock demo' });
+    }
+    if (path === '/api/qr') { return null; }  // let it 404 → the widget already handles a missing QR image
+    // bank auth wall — client mock: treat as logged-out (the popup flow needs a server; mock returns 401)
+    if (path === '/bank/account') return J({ error:'not logged in (client mock — bank popup needs the backend)' }, 401);
+    if (path === '/bank/logout') return J({ ok:true });
+    return J({ error:'not-found', path }, 404);
+  }
+
+  window.fetch = async function(input, init){
+    let url; try { url = new URL(typeof input==='string'?input:input.url, location.origin); } catch { return NATIVE(input, init); }
+    const p = url.pathname;
+    if (!p.startsWith('/api/') && !p.startsWith('/bank/')) return NATIVE(input, init);   // static assets, etc.
+    if (await probeBackend()) return NATIVE(input, init);                                 // real backend present
+    window.MARU_CLIENTMOCK = true;                                                        // flag: no backend (UI adapts the bank step)
+    const method = (init&&init.method)||'GET';
+    let body = {}; try { body = init&&init.body ? JSON.parse(init.body) : {}; } catch {}
+    const res = mockRoute(method, p, body, url);
+    return res || NATIVE(input, init);
+  };
+})();
+
 const $ = (s, r=document) => r.querySelector(s);
 const api = {
   issue: (b) => fetch('/api/issue',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()),
@@ -49,7 +148,7 @@ const api = {
   detail: (l,x) => fetch('/api/detail/'+encodeURIComponent(l)+'?lender='+encodeURIComponent(x)).then(r=>r.json()),
   bankAttest: (persona) => fetch('/api/bank-attest',{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:JSON.stringify({persona})}).then(r=>r.json()),
   verifyAttest: (claim,signature) => fetch('/api/verify-attestation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({claim,signature})}).then(r=>r.json()),
-  worldConfig: () => fetch('/api/world-config').then(r=>r.json()),
+  worldConfig: () => fetch('/api/world-config').then(r=>r.ok && (r.headers.get('content-type')||'').includes('json') ? r.json() : { mode:'mock', env:'staging', action:'marumaru-issue', _nobackend:true }).catch(()=>({ mode:'mock', env:'staging', action:'marumaru-issue', _nobackend:true })),
   verifyHuman: (b) => fetch('/api/verify-human',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()),
   // the bank auth wall (same-origin /bank pages). account is 401 until the user signs in there.
   bankAccount: () => fetch('/bank/account',{credentials:'include'}).then(async r=>({status:r.status, body:await r.json().catch(()=>({}))})),
@@ -110,6 +209,23 @@ function receiptHTML(title, rows, { variant = 'ok', tag = '', extra = '' } = {})
 }
 function showReceipt(slot, title, rows, opts) { const el = $('#'+slot); if (el){ el.innerHTML = receiptHTML(title, rows, opts); requestAnimationFrame(()=>el.querySelector('.receipt')?.classList.add('in')); } }
 const short = (s, n=22) => (s && String(s).length > n ? String(s).slice(0, n) + '…' : s);
+// A copyable value: shows the (optionally shortened) text + a 📋 button that copies the FULL value.
+// The full value lives in data-copy so the namehash is always retrievable even when displayed short.
+function copyable(full, shown) {
+  if (!full) return '(computing)';
+  const disp = shown || full;
+  return `<code class="copyv" data-copy="${String(full).replace(/"/g,'&quot;')}" title="${full}">${disp}</code>`
+    + `<button class="copybtn" data-copy="${String(full).replace(/"/g,'&quot;')}" aria-label="Copy full value" title="Copy">⧉</button>`;
+}
+// One delegated listener: any element with data-copy copies it to the clipboard on click + flashes ✓.
+document.addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-copy]'); if (!el) return;
+  const val = el.getAttribute('data-copy'); if (!val) return;
+  try { await navigator.clipboard.writeText(val); }
+  catch { const t=document.createElement('textarea'); t.value=val; document.body.appendChild(t); t.select(); try{document.execCommand('copy');}catch{} t.remove(); }
+  const btn = el.matches('.copybtn') ? el : el.parentElement?.querySelector('.copybtn');
+  if (btn) { const o=btn.textContent; btn.textContent='✓'; btn.classList.add('copied'); setTimeout(()=>{btn.textContent=o;btn.classList.remove('copied');},1200); }
+});
 
 // drawn SVG marks: a green ring (〇 pass) or a muted cross (✕ not met). No font glyphs.
 function ring(pass, size=44){
@@ -444,6 +560,14 @@ function renderBorrower(){
   }
 
   $('#pl-connect').onclick = async () => {
+    // CLIENT-MOCK (no backend): the bank auth-wall popup needs a server. Without one, connect DIRECTLY
+    // to the selected persona's account (the same figures the server would have signed) so the flow
+    // continues to Step 3. Honestly labeled as the offline demo path.
+    if (window.MARU_CLIENTMOCK) {
+      const a = { aiko:{holder:'Aiko Tanaka',income:12000,savings:62500,debt:3600}, kenji:{holder:'Kenji Sato',income:7500,savings:22000,debt:3750} }[SELECTED] || {};
+      $('#pl-out').innerHTML = `<div class="pl-waiting">Offline demo: connecting to ${a.holder}'s account…</div>`;
+      return onBankConnected(a);
+    }
     await api.bankLogout();                       // always start from a clean bank session
     const w = window.open('/bank?persona='+encodeURIComponent(SELECTED), 'maru_bank', 'width=440,height=700');
     $('#pl-out').innerHTML = `<div class="pl-waiting">A bank window opened. <b>Sign in there</b> (demo password shown on the page), view your account, then come back. This tab updates automatically. <a href="/bank?persona=${SELECTED}" target="_blank" rel="noopener">reopen the bank window</a></div>`;
@@ -519,8 +643,8 @@ function renderBorrower(){
       // ENS receipt: the REAL canonical namehash the contract writes under (computed server-side with
       // ethers), + resolver when live on-chain. Nothing faked — r.namehash is the actual EIP-137 node.
       showReceipt('r3', 'ENS record written', [
-        ['name', `<code>${label}.marumaru.eth</code>`],
-        ['namehash (EIP-137)', `<code>${short(r.namehash || '(computing)', 26)}</code>`],
+        ['name', copyable(`${label}.marumaru.eth`)],
+        ['namehash (EIP-137)', copyable(r.namehash, short(r.namehash, 26))],
         ['marks written', Object.keys(r.marks||{}).filter(k=>k!=='assurance').map(k=>`maru.${k}`).join(' · ')],
         ['resolver', WORLD.onchain ? WORLD.resolver : 'local resolver store (real ENSv2 subname on Sepolia at deploy)'],
       ], { tag: WORLD.onchain ? 'on-chain' : 'mock',
@@ -761,7 +885,8 @@ let WORLD = { mode:'mock', env:'staging', action:'marumaru-issue' };
 (async () => {
   try { WORLD = await api.worldConfig(); } catch {}
   window.MaruWorldID?.configure(WORLD);
-  const badge = WORLD.mode === 'real'
+  const badge = window.MARU_CLIENTMOCK ? 'Demo · offline'
+    : WORLD.mode === 'real'
     ? (WORLD.env === 'production' ? 'World ID · Production' : 'World ID · Staging')
     : 'Demo';
   $('#mode').textContent = badge;
