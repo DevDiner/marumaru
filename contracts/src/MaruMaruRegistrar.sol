@@ -306,10 +306,14 @@ contract MaruMaruRegistrar {
         // 5. Mint the soulbound passport to the borrower + write human/income/savings marks.
         //    Expiry clamped to the protocol freshness window.
         uint64 expiry = uint64(block.timestamp) + DEFAULT_TTL;
-        // R1: 0 roles — owner cannot repoint the resolver (which would let them forge marks).
+        // 0 roles — owner cannot repoint the resolver (which would let them forge marks).
         tokenId = registry.register(label, msg.sender, IRegistry(address(0)), address(resolver), 0, expiry);
         _passport[k] = Passport(tokenId, msg.sender, true, humanKey, true);
         resolver.setText(_node(label), "maru.human", "verified");
+        // Assurance tier. This path verifies against the World Router at worldGroupId == 1 (Orb), so a
+        // successful mint is PROVABLY Orb — write "orb" so a lender reading an on-chain-minted passport
+        // sees the same assurance flag the issuer path publishes (else it reads as an unknown tier).
+        resolver.setText(_node(label), "maru.assurance", "orb");
         resolver.setText(_node(label), "maru.income", incomeMark);
         resolver.setText(_node(label), "maru.savings", savingsMark);
         // Also publish the coarse income band (a range, not pass/fail) — derived from the SAME attested
