@@ -447,6 +447,9 @@ contract MaruMaruRegistrarTest is Test {
         assertEq(_readMark("aiko", "maru.savings"), "pass");   // 60000 >= 50000, derived independently
         assertEq(_readMark("aiko", "maru.human"), "verified");
         assertEq(_readMark("aiko", "maru.income_band"), "1-1.5x"); // 12000 = 1.2x floor → coarse band, on-chain
+        // This path verifies against the World Router at group 1 (Orb) → the assurance flag MUST read
+        // "orb", matching the issuer path, so a lender sees the tier on an on-chain-minted passport too.
+        assertEq(_readMark("aiko", "maru.assurance"), "orb");
     }
 
     // The COARSE income band is published on-chain BY mintWithProofs, derived from the SAME attested
@@ -494,6 +497,8 @@ contract MaruMaruRegistrarTest is Test {
         ens.authorizeKey("maru.savings", address(zero));
         ens.authorizeKey("maru.human", address(zero));
         ens.authorizeKey("maru.income_band", address(zero));
+        ens.authorizeKey("maru.assurance", address(zero));
+
         world.setAccept(true);
         verifier.setValueForKey("income", 50000);
         verifier.setValueForKey("savings", 50000);
