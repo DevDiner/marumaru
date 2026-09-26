@@ -1,0 +1,594 @@
+/* MaruMaru — "Hanko / Ink".
+   The 〇〇 IS a Japanese seal (hanko) + the passport "pass" mark. So the whole design is sumi ink on warm
+   rice-paper with ONE fearless accent: vermilion hanko-red — the color of a real name-seal. Oversized
+   Mincho/serif kinetic headlines carry the personality; the 〇 stamp is the live motion signature (it
+   "presses" in). Mono = the verified-record / MRZ voice. Token NAMES kept (--navy etc.) but REMAPPED to
+   the ink/vermilion system so the whole app re-skins cohesively; --navy is now "ink interactive". */
+:root {
+  --paper:   #F2EDE3;   /* warm rice-paper ground */
+  --paper-2: #EBE3D5;   /* slightly deeper paper (insets) */
+  --surface: #FBF8F1;   /* card surface, a shade above the ground */
+  --ink:     #1A1712;   /* sumi near-black */
+  --ink-2:   #6B6358;   /* muted secondary */
+  --ink-3:   #9A9084;   /* tertiary / captions */
+  --line:    #DBD2C2;   /* hairline on paper */
+  --navy:    #1A1712;   /* THE interactive tone is now INK (buttons, active nav, links) */
+  --navy-2:  #2E2820;   /* lighter ink for gradient depth */
+  --navy-d:  #100E0A;
+  --navy-t:  #1a171214; /* ink tint */
+  --pass:    #2E7D5B;   /* 〇 success — a calm ink-green, used sparingly */
+  --pass-t:  #2e7d5b14;
+  --fail:    #A69C8E;   /* ✕ not-met — muted paper-grey, not alarm */
+  --stamp:   #E4472E;   /* VERMILION hanko-red — the ONE fearless accent */
+  --seal:    #C8402F;   /* deeper seal-red for pressed states */
+  --gold:    #B8935A;   /* passport foil — ONLY on the passport artifact */
+  --lock:    #C3B9A8;
+  --r:       14px;
+  --shadow:  0 1px 2px rgba(26,23,18,.05), 0 12px 34px rgba(26,23,18,.09);
+  --shadow-lift: 0 2px 6px rgba(26,23,18,.07), 0 22px 50px rgba(26,23,18,.16);
+  --mono:    ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --sans:    -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --serif:   "Hiragino Mincho ProN", "Yu Mincho", Georgia, "Times New Roman", serif;  /* Mincho-first: editorial + JP */
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  color: var(--ink);
+  font: 15px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* warm rice-paper ground, faintly deepening at the edges (multi-layer depth) */
+  background:
+    radial-gradient(100% 60% at 50% -6%, #FAF6EE 0%, rgba(250,246,238,0) 55%),
+    radial-gradient(80% 90% at 100% 100%, rgba(26,23,18,.05) 0%, rgba(26,23,18,0) 55%),
+    radial-gradient(70% 80% at 0% 40%, rgba(228,71,46,.05) 0%, rgba(228,71,46,0) 50%),
+    var(--paper);
+  background-attachment: fixed;
+}
+/* whisper-quiet oversized 〇 seal-rings — fixed, blurred — paper depth on scroll without noise */
+body::before, body::after {
+  content: ""; position: fixed; border-radius: 50%; border: 3px solid var(--ink);
+  opacity: .04; filter: blur(.5px); pointer-events: none; z-index: 0;
+}
+body::before { width: 64vmin; height: 64vmin; top: 10vh; right: -20vmin; }
+body::after  { width: 48vmin; height: 48vmin; bottom: -16vmin; left: -14vmin; border-color: var(--stamp); opacity: .05; }
+.wrap, .masthead { position: relative; z-index: 1; }
+a { color: var(--stamp); }
+
+/* ---------- hero masthead: ink on rice-paper, oversized kinetic Mincho headline ---------- */
+.masthead { background: transparent; color: var(--ink); padding: 30px 20px 20px; position: relative; overflow: hidden; }
+.masthead::after {  /* faint tategaki-style vertical rule texture, like ruled washi */
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(100deg, transparent 0 26px, rgba(26,23,18,.02) 26px 27px); }
+.mh-inner { max-width: 760px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+.masthead .brand { display: flex; align-items: center; gap: 12px; }
+.masthead .brand svg { display: block; }
+.masthead .name { font: 700 24px/1 var(--serif); letter-spacing: .02em; color: var(--ink); }
+.masthead .mode { font: 600 10px var(--mono); color: var(--ink-2); background: var(--surface);
+  border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; letter-spacing: .06em; text-transform: uppercase; }
+/* the fearless bet: an OVERSIZED Mincho headline that dominates the fold */
+.mh-thesis { max-width: 760px; margin: 34px auto 0; font: 600 clamp(40px, 9vw, 82px)/0.98 var(--serif);
+  letter-spacing: -.02em; color: var(--ink); position: relative;
+  animation: heroRise .7s cubic-bezier(.2,.85,.2,1) both; }
+.mh-thesis .l2 { display: block; color: var(--ink-2); }
+.mh-thesis em { font-style: italic; color: var(--stamp); position: relative; }
+.mh-sub { max-width: 760px; margin: 18px auto 0; font-size: 15px; line-height: 1.65; color: var(--ink-2);
+  position: relative; max-width: 52ch; animation: heroRise .7s .08s cubic-bezier(.2,.85,.2,1) both; }
+@keyframes heroRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+.wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 80px; }
+
+/* ---------- segmented nav ---------- */
+nav { display: flex; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: 4px; gap: 3px; margin: 20px 0 26px; box-shadow: var(--shadow); position: relative; z-index: 2; }
+nav a { flex: 1; text-align: center; text-decoration: none; color: var(--ink-2);
+  font-size: 13.5px; font-weight: 600; padding: 11px 6px; border-radius: 9px;
+  transition: background .18s ease, color .18s ease; }
+nav a:hover { color: var(--ink); }
+nav a.active { background: var(--ink); color: var(--paper); }
+
+/* ---------- cards ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: var(--shadow); padding: 24px 24px; margin-bottom: 16px; }
+.card h2 { margin: 0 0 4px; font: 600 20px/1.25 var(--serif); letter-spacing: -.005em; }
+.card .sub { margin: 0; color: var(--ink-2); font-size: 13.5px; line-height: 1.6; }
+.tech { font: 600 11px var(--mono); color: var(--navy); letter-spacing: .02em;
+  text-transform: uppercase; margin-bottom: 10px; opacity: .8; }
+
+/* ---------- guided steps ---------- */
+.step { display: flex; align-items: flex-start; gap: 15px; }
+.step .n { flex: 0 0 30px; height: 30px; border-radius: 50%; background: var(--navy);
+  color: #fff; font: 600 15px var(--serif); display: flex; align-items: center;
+  justify-content: center; margin-top: 2px; box-shadow: 0 2px 6px rgba(26,23,18,.28); }
+.step .body { flex: 1; min-width: 0; }
+/* active (unlocked) step gets a subtle navy left-rule so the eye lands on what to do now */
+.card:not(.locked):has(.step) { border-left: 3px solid var(--navy); }
+.card.locked { opacity: .72; border-left: 3px solid transparent; }
+.card.locked .n { background: var(--lock); box-shadow: none; }
+.card.locked input, .card.locked button { pointer-events: none; }
+/* A locked step's buttons must LOOK unclickable, not just be inert — otherwise a filled primary button
+   reads "click me" and silently eats the click. Flatten every locked button to a disabled treatment. */
+.card.locked .btn { cursor: not-allowed; box-shadow: none !important; transform: none !important; }
+.card.locked .btn.primary { background: var(--lock); color: var(--surface); }
+.card.locked .btn.ghost { color: var(--lock); border-color: var(--line); }
+/* the reason a step is locked — shown only while locked, so the user knows what to do to unlock it */
+.lock-note { display: none; align-items: center; gap: 7px; margin-top: 14px; font: 600 12.5px var(--sans);
+  color: var(--ink-2); background: var(--paper-2); border: 1px dashed var(--line); border-radius: 9px; padding: 9px 12px; }
+.card.locked .lock-note { display: flex; }
+.lock-note svg { flex: 0 0 auto; }
+.lockchip { display: inline-flex; align-items: center; gap: 5px; font: 600 11px var(--sans);
+  color: var(--lock); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; }
+.donechip { display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--sans);
+  color: var(--pass); background: var(--pass-t); border-radius: 999px; padding: 4px 11px; }
+
+/* ---------- fields + buttons ---------- */
+.fields { display: flex; gap: 12px; margin: 16px 0 4px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 130px; }
+.field label { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+.money { position: relative; }
+.money .cur { position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--ink-2); font: 600 13px var(--mono); pointer-events: none; }
+.money input { padding-left: 42px; }
+input {
+  width: 100%; font: 14px var(--mono); padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface); color: var(--ink); transition: border-color .15s, box-shadow .15s;
+}
+input:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px var(--navy-t); }
+.actions { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+.btn { font: 600 14px var(--sans); border: 0; border-radius: 9px; padding: 11px 18px;
+  cursor: pointer; transition: transform .15s cubic-bezier(.2,.8,.2,1), filter .15s, box-shadow .15s; }
+.btn.primary { background: var(--navy); color: #fff; }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(26,23,18,.28); }
+.btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+.btn.ghost:hover:not(:disabled) { border-color: var(--navy); color: var(--navy); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(.98); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.opt { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.opt input { width: auto; }
+
+/* ---------- result banner ---------- */
+.result { margin-top: 16px; border-radius: 10px; padding: 14px 16px; font-size: 13.5px;
+  border: 1px solid var(--line); background: var(--paper); display: none; }
+.result.show { display: block; }
+.result.good { border-color: var(--pass); background: var(--pass-t); }
+.result.stop { border-color: var(--stamp); background: #c8402f10; }
+.result .rtitle { font-weight: 700; margin-bottom: 3px; }
+.result .rmeta { font: 12px var(--mono); color: var(--ink-2); }
+
+/* ---------- the marks (drawn, not glyphs) ---------- */
+.marks { display: flex; gap: 12px; margin: 4px 0 0; }
+.mark { flex: 1; text-align: center; border: 1px solid var(--line); border-radius: 11px;
+  padding: 16px 8px; background: var(--surface); }
+.mark svg { display: block; margin: 0 auto 8px; }
+.mark .mlabel { font-size: 12.5px; color: var(--ink); font-weight: 600; }
+.mark .mval { font: 11px var(--mono); color: var(--ink-2); margin-top: 2px; }
+
+/* ---------- machine-readable passport strip (the signature) ---------- */
+.mrz { margin-top: 18px; background: var(--ink); color: #E8DFCE; border-radius: 9px;
+  padding: 12px 14px; font: 12px/1.7 var(--mono); letter-spacing: .1em;
+  white-space: pre-wrap; word-break: break-all; }
+.mrz .o { color: #6fd6a0; } .mrz .x { color: #A99B87; }
+
+/* ---------- passport meta + lenders ---------- */
+.pmeta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.chip { font: 600 12px var(--sans); border-radius: 999px; padding: 5px 12px;
+  background: var(--paper); color: var(--ink-2); border: 1px solid var(--line); }
+.chip.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.lenders { margin-top: 8px; display: flex; flex-direction: column; gap: 7px; }
+.lender { display: flex; justify-content: space-between; align-items: center;
+  border: 1px solid var(--line); border-radius: 9px; padding: 9px 13px; font-size: 13px; }
+.lender .until { font: 11px var(--mono); color: var(--ink-2); }
+
+/* ---------- demo failure-paths (collapsed, out of the borrower's way) ---------- */
+details.demo { margin-top: 4px; border: 1px dashed var(--line); border-radius: 10px; background: var(--surface); }
+details.demo summary { cursor: pointer; padding: 12px 16px; font: 600 12.5px var(--sans);
+  color: var(--ink-2); list-style: none; display: flex; align-items: center; gap: 8px; }
+details.demo summary::-webkit-details-marker { display: none; }
+details.demo summary .tag { font: 700 10px var(--mono); color: var(--stamp); border: 1px solid var(--stamp);
+  border-radius: 4px; padding: 1px 5px; letter-spacing: .05em; }
+details.demo[open] summary { border-bottom: 1px dashed var(--line); }
+.demo-body { padding: 14px 16px; }
+.demo-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.demo-btns .btn { font-size: 12.5px; padding: 8px 12px; }
+
+/* ---------- "Why trust it?" — forgery contrast ---------- */
+.why-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+.why-col { border: 1px solid var(--line); border-radius: var(--r); padding: 14px; background: var(--paper); }
+.why-col.attest { background: var(--pass-t); border-color: #1c7c5433; }
+.why-tag { font: 700 11px var(--mono); letter-spacing: .04em; text-transform: uppercase;
+  border-radius: 999px; padding: 4px 10px; display: inline-block; margin-bottom: 10px; }
+.why-tag.bad { color: var(--stamp); background: #c8402f14; }
+.why-tag.good { color: var(--pass); background: #fff; border: 1px solid #1c7c5433; }
+.payslip, .attcard { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 12px; }
+.ps-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 5px 0; }
+.ps-row.big { font-size: 15px; font-weight: 700; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 4px 0; padding: 8px 0; }
+.ps-row.muted { color: var(--ink-2); font-size: 12px; }
+.ps-mono { font-family: var(--mono); }
+#forgeAmt { font-family: var(--mono); font-size: 15px; font-weight: 700; width: 88px; text-align: right;
+  border: 1px dashed var(--stamp); border-radius: 6px; padding: 2px 6px; color: var(--stamp); background: #fff; }
+.ps-note { font-size: 11px; color: var(--stamp); margin-top: 8px; }
+.ps-note.ok { color: var(--pass); }
+.pill.ok { color: var(--pass); background: var(--pass-t); border-radius: 999px; padding: 3px 12px; font: 700 13px var(--mono); }
+.pill.no { color: var(--stamp); background: #c8402f14; border-radius: 999px; padding: 3px 12px; font: 700 13px var(--mono); }
+.why-col .btn { width: 100%; margin-top: 12px; }
+.why-out { min-height: 8px; }
+.verdict { margin-top: 10px; font-size: 12.5px; line-height: 1.5; border-radius: 8px; padding: 10px 12px; }
+.verdict.bad { color: var(--stamp); background: #c8402f10; border: 1px solid #c8402f2e; }
+.verdict.good { color: var(--pass); background: var(--pass-t); border: 1px solid #1c7c5433; }
+.verdict small { color: var(--ink-2); }
+@media (max-width: 560px) { .why-grid { grid-template-columns: 1fr; } }
+
+/* ---------- redesign: mock note, personas, bank portal, fail section ---------- */
+.mocknote { margin: 12px 0 0; font-size: 11.5px; color: var(--ink-2); line-height: 1.6;
+  border-left: 2px solid var(--line); padding-left: 10px; }
+.tag.mono { font: 700 10px var(--mono); color: var(--stamp); border: 1px solid var(--stamp);
+  border-radius: 4px; padding: 1px 6px; letter-spacing: .04em; margin-right: 4px; }
+
+/* demo-only account toggle — deliberately framed as scaffolding, not a product choice */
+.demo-toggle { border: 1px dashed var(--line); border-radius: 10px; padding: 11px 13px; margin: 10px 0 12px; background: var(--paper); }
+.demo-toggle .dt-head { font-size: 12px; color: var(--ink-2); line-height: 1.5; margin-bottom: 8px; }
+.demo-toggle .dt-tag { font: 700 9.5px var(--mono); color: var(--stamp); border: 1px solid var(--stamp); border-radius: 4px; padding: 1px 5px; letter-spacing: .05em; margin-right: 5px; }
+.demo-toggle .prow { margin-top: 6px; }
+
+.persona { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 12px; }
+.prow { display: flex; align-items: center; gap: 10px; font-size: 13.5px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; }
+.prow:has(input:checked) { border-color: var(--navy); background: var(--navy-t); }
+.prow input { width: auto; flex: 0 0 auto; accent-color: var(--navy); margin: 0; }
+.prow span { flex: 1; }
+.pfig { display: block; font: 600 11.5px var(--mono); color: var(--ink-2); margin-top: 2px; }
+
+.bank-portal { background: var(--ink); color: #E8DFCE; border-radius: 10px; padding: 13px 15px;
+  font-size: 13px; margin: 4px 0 10px; }
+.bp-head { font: 700 11px var(--mono); letter-spacing: .04em; color: #C7B8A2; margin-bottom: 8px; }
+.bp-tag { color: var(--stamp); border: 1px solid var(--stamp); border-radius: 4px; padding: 0 5px; margin-left: 6px; font-size: 9.5px; }
+.bp-row { display: flex; justify-content: space-between; padding: 4px 0; }
+.bp-mono { font-family: var(--mono); }
+.bp-mono.locked { color: #F2EDE3; }
+.bp-note { font-size: 10.5px; color: #A99B87; margin-top: 8px; line-height: 1.55; }
+.finenote { font-size: 11px; color: var(--ink-2); line-height: 1.55; margin: 0 0 12px; }
+
+.failsec { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 16px 18px; margin-top: 16px; box-shadow: var(--shadow); }
+.failsec .section-label { margin-top: 0; }
+.rlinks { margin-top: 8px; }
+
+/* ---------- inline "why trust these marks" ---------- */
+.whytrust { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.whytrust summary { cursor: pointer; font: 600 13px var(--sans); color: var(--navy); }
+.attbtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.attbtns .btn { font-size: 12.5px; padding: 8px 12px; }
+.whyfoot { margin-top: 14px; font-size: 12px; }
+
+/* ---------- lender: role-play, guided steps, anti-stacking ---------- */
+.roleplay { background: var(--navy-t); border: 1px solid var(--line); border-radius: 9px;
+  padding: 10px 12px; font-size: 12px; color: var(--ink-2); line-height: 1.55; margin: 4px 0 14px; }
+.step-guide { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 4px; }
+.sg { display: flex; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+.sgn { flex: 0 0 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff;
+  font: 700 12px var(--sans); display: flex; align-items: center; justify-content: center; }
+.sg .btn { margin-left: auto; font-size: 12.5px; padding: 7px 12px; }
+.stacking-signal { display: none; }
+.stacking-signal.show { display: block; margin-top: 14px; border-radius: 9px; padding: 11px 13px;
+  background: var(--pass-t); border: 1px solid #1c7c5433; }
+.stacking-signal.warn { background: #c8402f10; border-color: #c8402f2e; }
+.ss-label { font: 700 10px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin-bottom: 4px; }
+.ss-body { font-size: 12.5px; line-height: 1.55; }
+.stacking-signal.warn .ss-body { color: var(--stamp); }
+
+.mrz-caption { font: 600 10px var(--mono); color: var(--ink-2); text-transform: uppercase;
+  letter-spacing: .06em; margin: 18px 0 -8px; }
+
+/* ---------- honest zkTLS pipeline: real-vs-simulated, auth wall, attestor ---------- */
+.realsim { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 4px 0 14px; background: var(--paper); }
+.rs-label { font: 700 10px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin-bottom: 6px; }
+.rs-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 3px 0; }
+.rs-real { color: var(--pass); font: 600 11.5px var(--mono); }
+.rs-sim  { color: var(--ink-2); font: 600 11.5px var(--mono); }
+.rs-gap  { color: var(--stamp); font: 600 11.5px var(--mono); text-align: right; }
+.pipeline-map { margin-top: 8px; }
+.pipeline-map summary { cursor: pointer; font: 600 11.5px var(--sans); color: var(--navy); }
+.pipeline-map table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11.5px; }
+.pipeline-map th, .pipeline-map td { text-align: left; border: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+.pipeline-map th { background: var(--navy-t); font-weight: 700; }
+
+/* Step 2 connect-method chooser: open banking (Plaid) vs zkTLS (self-sovereign) */
+.method-tabs { display: flex; gap: 8px; margin: 14px 0 12px; }
+.mtab { flex: 1; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 13px; cursor: pointer; font: 600 14px var(--sans); color: var(--ink);
+  display: flex; flex-direction: column; gap: 2px; transition: border-color .12s, box-shadow .12s, background .12s; }
+.mtab .mt-sub { font: 600 11px var(--mono); color: var(--ink-3); letter-spacing: .02em; text-transform: none; }
+.mtab:hover { border-color: var(--navy); }
+.mtab.sel { border-color: var(--navy); box-shadow: inset 0 0 0 1px var(--navy); background: var(--navy-t); }
+.method-panel { margin-bottom: 4px; }
+.portal-login.plaid { background: linear-gradient(158deg, #2E2820 0%, var(--ink) 78%); }
+.portal-login.plaid .pl-head { color: #C7B8A2; }
+
+.portal-login { background: var(--ink); color: #E8DFCE; border-radius: 10px; padding: 13px 15px; margin: 4px 0 12px; }
+.pl-head { font: 700 11px var(--mono); letter-spacing: .04em; color: #C7B8A2; margin-bottom: 8px; }
+.pl-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+.pl-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.pl-actions .btn { font-size: 12.5px; padding: 8px 12px; }
+/* On the DARK bank card, ink-on-ink makes the primary CTA vanish. Give it the vermilion accent (max pop,
+   the single accent color) and turn the secondary into a quiet outline so the hierarchy is unmistakable. */
+.portal-login .btn.primary { background: var(--stamp); color: #fff; }
+.portal-login .btn.primary:hover:not(:disabled) { filter: brightness(1.06); }
+.portal-login .btn.ghost { background: transparent; color: var(--paper); border-color: rgba(237,228,211,.34); }
+.portal-login .btn.ghost:hover:not(:disabled) { border-color: var(--paper); color: #fff; }
+.pl-out { margin-top: 10px; }
+.authwall-401 { font-family: var(--mono); }
+
+.pipe { margin-top: 4px; }
+.pipe-step { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 10px 0 6px; }
+.ps-n { flex: 0 0 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff;
+  font: 700 12px var(--sans); display: flex; align-items: center; justify-content: center; }
+.finenote2 { font-size: 11px; color: var(--ink-2); }
+
+/* ---------- World ID connect (real IDKit flow) ---------- */
+.wid-connect { margin-top: 10px; }
+.wid-wait { background: var(--navy-t); border: 1px solid var(--line); border-radius: 9px; padding: 11px 13px; font-size: 13px; }
+.wid-link { display: inline-block; font-family: var(--mono); font-size: 12px; color: var(--navy); word-break: break-all; margin: 4px 0; }
+.wid-spin { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+
+/* ---------- official IDKit verification widget (World-branded modal) ---------- */
+.widget-overlay[hidden] { display: none; }   /* CRITICAL: an explicit display: below beats [hidden] — keep this first so the overlay can't eat clicks while closed */
+.widget-overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+  background: rgba(16,27,41,.55); backdrop-filter: blur(3px); opacity: 0; transition: opacity .2s ease; padding: 20px; }
+.widget-overlay.in { opacity: 1; }
+.widget { position: relative; width: 100%; max-width: 360px; background: #fff; border-radius: 20px;
+  padding: 26px 24px 24px; text-align: center; box-shadow: 0 24px 70px rgba(16,27,41,.4);
+  transform: translateY(10px) scale(.98); transition: transform .24s cubic-bezier(.2,.8,.2,1); }
+.widget-overlay.in .widget { transform: none; }
+.widget-x { position: absolute; top: 12px; right: 14px; border: 0; background: none; font-size: 24px; line-height: 1;
+  color: var(--ink-3); cursor: pointer; padding: 4px; }
+.widget-x:hover { color: var(--ink); }
+.widget-brand { display: inline-flex; align-items: center; gap: 7px; font: 700 14px var(--sans); color: #007CFB; margin-bottom: 14px; }
+.widget-brand svg { display: block; }
+.w-title { font: 600 20px/1.25 var(--serif); color: var(--ink); }
+.w-sub { font-size: 13px; color: var(--ink-2); line-height: 1.55; margin: 6px auto 0; max-width: 30ch; }
+.w-qr { position: relative; width: 220px; height: 220px; margin: 18px auto 6px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+.w-qr img { width: 100%; height: 100%; }
+.w-qr.mock { opacity: .9; }
+.w-demoribbon { position: absolute; top: 6px; right: 6px; font: 700 9px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: #007CFB; background: #fff; border: 1px solid #007cfb55; border-radius: 5px; padding: 2px 6px; box-shadow: 0 1px 3px rgba(16,27,41,.12); }
+.w-open { width: 100%; margin: 12px 0 10px; background: #007CFB; }
+.w-open:hover:not(:disabled) { filter: brightness(1.06); }
+.w-wait { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+.w-spin { width: 13px; height: 13px; border: 2px solid #007cfb40; border-top-color: #007CFB; border-radius: 50%; animation: wspin .8s linear infinite; }
+@keyframes wspin { to { transform: rotate(360deg); } }
+.w-check { margin: 8px auto 4px; animation: ppIn .45s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .widget, .widget-overlay, .w-spin, .w-check { transition: none !important; animation: none !important; } }
+
+/* ---------- "behind the scenes" drawers (real crypto, tucked under each step) ---------- */
+.bts-drawer { margin: -8px 0 16px; border: 1px dashed var(--line); border-radius: 10px;
+  background: var(--surface); }
+.bts-drawer > summary { cursor: pointer; padding: 10px 16px 10px 40px; position: relative;
+  font: 600 12.5px var(--sans); color: var(--ink-2); list-style: none; }
+.bts-drawer > summary::-webkit-details-marker { display: none; }
+.bts-drawer > summary::before { content: "⌄"; position: absolute; left: 18px; top: 9px;
+  font-size: 14px; transition: transform .15s ease; }
+.bts-drawer[open] > summary::before { transform: rotate(180deg); }
+.bts-drawer[open] > summary { border-bottom: 1px dashed var(--line); }
+.bts-drawer .bts-body { padding: 14px 16px; }
+.bts-drawer .bts-body .mocknote { margin: 0; border-left: 0; padding-left: 0; }
+.bts-sub { font: 700 10px var(--mono); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--ink-2); margin: 18px 0 6px; }
+
+/* the account selector question + connect card copy */
+.selector-q { margin-top: 12px; font-weight: 600; color: var(--ink); }
+.pl-connect-copy { font-size: 12px; color: #C7B8A2; margin: 6px 0 2px; line-height: 1.5; }
+.pl-waiting { color: #C7B8A2; font-size: 12.5px; margin-top: 8px; }
+.pl-waiting a, .pl-out a { color: #E6C68A; }
+.pl-connected { display: inline-flex; align-items: center; gap: 7px; color: var(--pass);
+  font-weight: 600; font-size: 13.5px; }
+
+/* connect → connected transition (dark bank card turns to a calm success state) */
+.portal-login.connected { background: var(--pass-t); border: 1px solid #1c7c5433; color: var(--ink); }
+.portal-login.connected .pl-head { color: var(--pass); }
+.portal-login.connected .pl-connect-copy,
+.portal-login.connected .pl-actions { display: none; }
+
+/* ENS subname input with an inline .marumaru.eth suffix (used in Step 3 AND the lender lookup) */
+.ens-input { display: flex; align-items: stretch; max-width: 340px;
+  border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
+  transition: border-color .15s, box-shadow .15s; }
+.ens-input:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px var(--navy-t); }
+.ens-input input { border: 0; border-radius: 0; flex: 1; min-width: 0; }
+.ens-input input:focus { box-shadow: none; }
+.ens-suffix { display: flex; align-items: center; padding: 0 12px; background: var(--paper);
+  border-left: 1px solid var(--line); font: 600 13px var(--mono); color: var(--ink-2); white-space: nowrap; }
+
+/* minted-passport marks + empty state */
+.minted-marks { display: flex; gap: 7px; flex-wrap: wrap; margin: 10px 0 4px; }
+.empty-state { text-align: center; padding: 34px 22px; }
+.empty-state .actions { justify-content: center; }
+.empty-state .btn { text-decoration: none; }
+
+/* the rejection-paths drawer: TRY IT reads as invitation (navy), not alarm (red) */
+#rejsec > summary .tag { color: var(--navy); border-color: var(--navy); }
+
+/* ---------- marks grid (wraps to 2 rows once a 4th mark appears) ---------- */
+.marks-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.marks-grid .mark { flex: 1 1 40%; min-width: 120px; }
+
+/* ---------- borrower: "Who can see your passport" share panel ---------- */
+.share-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.share-row select { flex: 1; min-width: 120px; font: 14px var(--sans); padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.share-row select:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px var(--navy-t); }
+.share-row .btn { flex: 0 0 auto; }
+.shared-list { display: flex; flex-direction: column; gap: 8px; }
+.shared-item { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border: 1px solid var(--line); border-radius: 9px; padding: 10px 13px; font-size: 13.5px; }
+.shared-item .until { color: var(--ink-2); font: 12px var(--mono); }
+.shared-item .tech-hint { display: block; font: 10px var(--mono); color: var(--lock); margin-top: 2px; }
+.btn.sm { font-size: 12px; padding: 6px 11px; }
+.empty-hint { border-left: 2px solid var(--line); padding-left: 10px; }
+
+/* ---------- lender portal ---------- */
+.lender-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.whoami { font: 600 11px var(--sans); color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; }
+.whoami select { font: 600 13px var(--sans); padding: 8px 10px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.whoami select:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px var(--navy-t); }
+.lookup-row { display: flex; gap: 8px; align-items: stretch; margin: 16px 0 4px; flex-wrap: wrap; }
+.lookup-row .ens-input { flex: 1 1 240px; max-width: none; }
+.lookup-row .ens-input input { min-width: 0; }
+.lookup-row .btn { flex: 0 0 auto; }
+.marks-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13.5px; }
+.marks-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.marks-table td.mark-cell { text-align: right; font: 600 13px var(--mono); }
+.marks-table td.mark-cell.ok { color: var(--pass); }
+.marks-table td.mark-cell.no { color: var(--fail); }
+.marks-table td.mark-cell.band { color: var(--navy); font-weight: 700; }
+.band-hint { color: var(--ink-2); font-weight: 400; font-size: 11px; }
+
+/* income band on the passport — a coarse RANGE, shown distinctly from the 〇/✕ marks */
+.band-row { margin: 12px 0 0; border: 1px solid var(--line); border-left: 3px solid var(--navy);
+  border-radius: 9px; padding: 11px 13px; background: var(--navy-t); }
+.band-label { font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); }
+.band-val { font: 700 16px var(--mono); color: var(--navy); margin: 0 2px; }
+.band-unit { font-size: 12px; color: var(--ink-2); }
+.band-note { font-size: 11.5px; color: var(--ink-2); margin-top: 3px; line-height: 1.4; }
+.wire { background: var(--ink); color: #E8DFCE; border-radius: 8px; padding: 11px 13px; margin: 4px 0 10px;
+  font: 11.5px/1.5 var(--mono); white-space: pre-wrap; word-break: break-all; overflow-x: auto; }
+.wire + .bts-sub { margin-top: 12px; }
+.bts-body code { font: 12px var(--mono); background: var(--paper); padding: 1px 5px; border-radius: 4px; }
+
+/* ---------- tiered World ID verification (Step 1 chooser + assurance flag) ---------- */
+.tier-choose { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 4px; }
+.tier { position: relative; display: block; border: 1px solid var(--line); border-radius: 10px;
+  padding: 11px 12px 12px; cursor: pointer; background: var(--surface); transition: border-color .12s, box-shadow .12s; }
+.tier:hover { border-color: var(--navy); }
+.tier.sel { border-color: var(--navy); box-shadow: inset 0 0 0 1px var(--navy); }
+.tier input { position: absolute; opacity: 0; pointer-events: none; }
+.tier .t-name { display: block; font: 700 14px var(--sans); color: var(--ink); }
+.tier .t-badge { display: inline-block; margin: 5px 0 7px; font: 700 9.5px var(--mono);
+  letter-spacing: .05em; text-transform: uppercase; border-radius: 4px; padding: 1px 6px; }
+.t-badge.hi { color: var(--pass); border: 1px solid var(--pass); background: var(--pass-t); }
+.t-badge.mid { color: var(--navy); border: 1px solid var(--navy); background: var(--navy-t); }
+.t-badge.lo { color: #9A6A12; border: 1px solid #C79A3E; background: #c79a3e1c; }
+.tier .t-desc { display: block; font-size: 11.5px; color: var(--ink-2); line-height: 1.45; }
+.tier .t-desc em { color: #9A6A12; font-style: normal; font-weight: 600; }
+.tier-note { font-size: 12px; color: #7A5A12; background: #c79a3e14; border: 1px solid #c79a3e40;
+  border-radius: 8px; padding: 9px 11px; margin: 8px 0 2px; line-height: 1.5; }
+
+/* assurance chips + rows (my-passport, mint result, lender table) */
+.chip.tier { border-style: solid; }
+.tier-orb { color: var(--pass); border-color: var(--pass); background: var(--pass-t); }
+.tier-passport { color: var(--navy); border-color: var(--navy); background: var(--navy-t); }
+.tier-selfie, .tier-device { color: #9A6A12; border-color: #C79A3E; background: #c79a3e1c; }
+.tier-unknown { color: var(--ink-2); border-color: var(--line); }
+.mark-cell.tier { font-weight: 700; }
+.asr-note { font-size: 12px; border-radius: 8px; padding: 9px 11px; margin: 10px 0 2px; line-height: 1.5; }
+.asr-note.ok { color: var(--pass); background: var(--pass-t); border: 1px solid var(--pass); }
+.asr-note.mid { color: var(--navy); background: var(--navy-t); border: 1px solid var(--navy); }
+.asr-note.lo { color: #7A5A12; background: #c79a3e14; border: 1px solid #c79a3e50; }
+.stacking-signal.indicative { border-color: #c79a3e50; background: #c79a3e10; }
+
+/* the "preview a different applicant" drawer (persona picker, tucked out of the main flow) */
+.preview-drawer { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 4px; }
+.preview-drawer > summary { cursor: pointer; font: 600 12px var(--sans); color: var(--ink-2);
+  list-style: none; padding: 6px 0; display: flex; align-items: center; gap: 8px; }
+.preview-drawer > summary::-webkit-details-marker { display: none; }
+.preview-drawer > summary:hover { color: var(--ink); }
+.preview-drawer .demo-toggle { margin-top: 6px; }
+
+/* ---------- verification receipts (the tech, VISIBLY working, in the flow) ---------- */
+.receipt-slot:empty { display: none; }
+.receipt { margin-top: 14px; border-radius: 12px; padding: 14px 15px; position: relative;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%); border: 1px solid #E8DFCE;
+  box-shadow: var(--shadow-lift);   /* z3 — proof sits "closest" to the viewer */
+  opacity: 0; transform: translateY(8px); transition: opacity .32s ease, transform .32s cubic-bezier(.2,.8,.2,1); }
+.receipt.in { opacity: 1; transform: none; }
+.receipt.rj { border-color: #e6b8b0; background: linear-gradient(180deg,#fffafa,#fdf1ef); }
+.receipt .rhead { display: flex; align-items: center; gap: 8px; font: 700 12.5px var(--sans); color: var(--pass); }
+.receipt.rj .rhead { color: var(--stamp); }
+.receipt .rhead::after { content: "✓"; order: -1; display: none; }  /* dot carries the state */
+.receipt .rdot { width: 8px; height: 8px; border-radius: 50%; background: var(--pass); box-shadow: 0 0 0 0 rgba(28,124,84,.5); animation: rpulse 2s ease-out infinite; }
+.receipt.rj .rdot { background: var(--stamp); animation: none; }
+@keyframes rpulse { 0%{box-shadow:0 0 0 0 rgba(28,124,84,.45)} 70%{box-shadow:0 0 0 7px rgba(28,124,84,0)} 100%{box-shadow:0 0 0 0 rgba(28,124,84,0)} }
+.receipt .rtag { margin-left: auto; font: 700 9.5px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+.receipt .rbody { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.receipt .kv { display: flex; gap: 12px; justify-content: space-between; align-items: baseline; font-size: 12.5px;
+  opacity: 0; transform: translateY(4px); animation: kvIn .3s ease forwards; }
+.receipt.in .kv:nth-child(1){animation-delay:.06s}.receipt.in .kv:nth-child(2){animation-delay:.12s}
+.receipt.in .kv:nth-child(3){animation-delay:.18s}.receipt.in .kv:nth-child(4){animation-delay:.24s}
+@keyframes kvIn { to { opacity: 1; transform: none; } }
+.receipt .rk { color: var(--ink-2); flex: 0 0 auto; }
+.receipt .rv { font: 12px var(--mono); color: var(--ink); text-align: right; }
+.receipt .rv code { background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 11.5px; }
+.receipt .rmut { color: var(--ink-3); font-size: 11px; }
+.receipt .rkill { margin-top: 12px; }
+.receipt .rkill-out:not(:empty) { margin-top: 8px; }
+
+/* ---------- elevation + scroll-reveal + view cross-fade (multi-layer, smooth) ---------- */
+.card { transition: box-shadow .2s ease, opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1), border-color .15s; }
+.card:not(.locked):has(.step) { box-shadow: var(--shadow-lift); }   /* active step lifts (z2) */
+/* scroll-reveal: cards/receipts fade-rise as they enter view (JS adds .reveal then .in) */
+.reveal { opacity: 0; transform: translateY(14px); }
+.reveal.in { opacity: 1; transform: none; transition: opacity .45s ease, transform .45s cubic-bezier(.2,.8,.2,1); }
+/* view cross-fade on hash change (JS toggles .swapping on #view) */
+#view { transition: opacity .18s ease; }
+#view.swapping { opacity: 0; }
+
+/* ---------- misc ---------- */
+.foot { color: var(--ink-2); font-size: 12px; text-align: center; margin-top: 28px; line-height: 1.7; }
+.foot-disc { color: var(--ink-3); font-size: 11px; }
+
+/* ---------- the passport data-page (THE signature artifact) ---------- */
+/* Used in the mint-success result AND the My-passport view: the credential rendered as a real passport
+   inner page — SUMI-INK stock, a gold foil frame, the wordmark + 〇〇, the ENS name as the passport number,
+   the marks embossed, and the MRZ strip at the base. This is the one bold, memorable object. */
+.passport { position: relative; border-radius: 14px; padding: 20px 20px 16px; color: #F2EDE3; overflow: hidden;
+  background: radial-gradient(130% 150% at 85% -20%, rgba(228,71,46,.28) 0%, rgba(26,23,18,0) 55%),
+    linear-gradient(158deg, #2E2820 0%, var(--ink) 72%);
+  box-shadow: var(--shadow-lift); }
+.passport::before {  /* gold foil hairline frame */
+  content: ""; position: absolute; inset: 9px; border: 1px solid rgba(184,147,90,.42); border-radius: 8px; pointer-events: none; }
+.passport::after {   /* faint guilloché texture, like a real document */
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(118deg, transparent 0 20px, rgba(184,147,90,.05) 20px 21px); }
+.pp-head { display: flex; align-items: baseline; justify-content: space-between; position: relative; }
+.pp-title { font: 600 13px var(--serif); letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+.pp-maru { font: 700 15px var(--serif); color: #fff; letter-spacing: .06em; }
+.pp-no { margin-top: 2px; font: 600 12px var(--mono); color: #C7B8A2; letter-spacing: .04em; position: relative; }
+.pp-marks { display: flex; gap: 8px; margin: 16px 0 4px; position: relative; }
+.pp-mark { flex: 1; text-align: center; border: 1px solid rgba(255,255,255,.12); border-radius: 9px;
+  padding: 11px 6px 9px; background: rgba(255,255,255,.04); }
+.pp-mark .g { display: block; font: 700 20px var(--sans); line-height: 1; }
+.pp-mark.on .g { color: #6fd6a0; } .pp-mark.off .g { color: #A99B87; }
+.pp-mark .l { display: block; font: 600 10px var(--sans); color: #C7B8A2; margin-top: 6px; letter-spacing: .02em; }
+/* the assurance mark = a real vermilion hanko (朱肉 cinnabar seal) pressed onto the document. It is the
+   ONE red spot on the gold-framed passport, and the live motion signature of the whole app: at mint it
+   PRESSES in — arriving big + faint, slamming down past its mark, then settling askew like a hand-stamp. */
+.pp-stamp { position: absolute; top: 2px; right: 6px; font: 800 9.5px var(--mono); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--stamp); border: 1.5px solid var(--stamp); border-radius: 6px;
+  padding: 3px 8px; transform: rotate(-4deg); transform-origin: 72% 28%;
+  text-shadow: 0 0 1px rgba(228,71,46,.25);
+  animation: stampPress .55s .3s cubic-bezier(.2,1.4,.3,1) both; }
+@keyframes stampPress {
+  0%   { opacity: 0; transform: rotate(-14deg) scale(1.9); box-shadow: 0 0 0 rgba(228,71,46,0); }
+  55%  { opacity: 1; transform: rotate(-2deg) scale(.9);  box-shadow: 0 2px 12px rgba(228,71,46,.38); }
+  75%  { transform: rotate(-5deg) scale(1.06); }
+  100% { opacity: 1; transform: rotate(-4deg) scale(1);   box-shadow: 0 1px 4px rgba(228,71,46,.18); }
+}
+.pp-mrz { margin-top: 12px; background: rgba(0,0,0,.28); border-radius: 7px; padding: 9px 11px;
+  font: 11px/1.7 var(--mono); letter-spacing: .12em; color: #E8DFCE; white-space: pre-wrap; word-break: break-all; position: relative; }
+.pp-mrz .o { color: #6fd6a0; } .pp-mrz .x { color: #A99B87; }
+/* the mint payoff: the passport settles in */
+.mint-reveal { margin: 10px 0 4px; animation: ppIn .5s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ppIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mint-reveal { animation: none; } }
+.section-label { font: 600 11px var(--mono); color: var(--ink-2); text-transform: uppercase;
+  letter-spacing: .08em; margin: 20px 0 8px; }
+:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  /* nothing stays hidden if motion is off: force revealed/settled states */
+  .reveal, .reveal.in, .receipt, .receipt .kv, .mint-reveal { opacity: 1 !important; transform: none !important; }
+}
+@media (max-width: 480px) { .wrap { padding: 20px 14px 60px; } .fields { flex-direction: column; } }

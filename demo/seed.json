@@ -1,0 +1,16 @@
+{
+  "_note": "Single seed source for the demo. Consumed by app/store.mjs (in-memory on Vercel) and demo/deploy_demo.mjs (writes the local JSON files). 'mei' is a pre-existing passport so Lender view / My-passport have something to show, and its nullifier 'seed-mei' backs the 'second passport, same human' rejection. aiko/kenji are deliberately NOT seeded so the borrower can mint them live.",
+  "passports": {
+    "mei": {
+      "owner": "0xB0B",
+      "nullifier": "seed-mei",
+      "soulbound": true,
+      "marks": { "maru.income": "pass", "maru.savings": "pass", "maru.human": "verified", "maru.assurance": "orb" },
+      "lenders": {},
+      "expiry": 4102444800
+    }
+  },
+  "nulls": {
+    "marumaru-issue:seed-mei": 1700000000000
+  }
+}
