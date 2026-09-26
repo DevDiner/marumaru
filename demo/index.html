@@ -139,6 +139,28 @@
   };
 })();
 
+// demoQR() — a dependency-free QR-STYLE placeholder for when /api/qr isn't reachable (static deploy,
+// no backend). It's NOT a scannable code (the demo path is "click Simulate", not scan) — it just gives
+// the widget a clean, on-brand QR-looking image instead of a broken <img>. Deterministic pattern with
+// the three finder squares, so it reads as a QR at a glance.
+window.demoQR = function demoQR(){
+  const N = 21, cell = 200 / N;
+  const finder = (x, y) => `<rect x="${x*cell}" y="${y*cell}" width="${7*cell}" height="${7*cell}" fill="#1A1712"/>`
+    + `<rect x="${(x+1)*cell}" y="${(y+1)*cell}" width="${5*cell}" height="${5*cell}" fill="#fff"/>`
+    + `<rect x="${(x+2)*cell}" y="${(y+2)*cell}" width="${3*cell}" height="${3*cell}" fill="#1A1712"/>`;
+  const inFinder = (r, c) => (r < 8 && c < 8) || (r < 8 && c >= N-8) || (r >= N-8 && c < 8);
+  let mods = '';
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    if (inFinder(r, c)) continue;
+    if (((r * 7 + c * 13 + r * c * 3) % 5) < 2) mods += `<rect x="${c*cell}" y="${r*cell}" width="${cell}" height="${cell}" fill="#1A1712"/>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%" role="img" aria-label="demo QR">`
+    + `<rect width="200" height="200" fill="#fff"/>${mods}${finder(0,0)}${finder(N-7,0)}${finder(0,N-7)}</svg>`;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = svg;
+  return wrap.firstChild;
+};
+
 const $ = (s, r=document) => r.querySelector(s);
 const api = {
   issue: (b) => fetch('/api/issue',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()),
@@ -458,7 +480,7 @@ function renderBorrower(){
     widget.open(`
       <div class="w-title">Verify with World ID</div>
       <div class="w-sub">Scan with the ${app}, or open it on this device. World returns proof of human, never your identity.</div>
-      <div class="w-qr"><img alt="World ID QR" src="/api/qr?data=${encodeURIComponent(connectorURI)}"></div>
+      <div class="w-qr"><img alt="World ID QR" src="/api/qr?data=${encodeURIComponent(connectorURI)}" onerror="this.replaceWith(demoQR())"></div>
       <a class="btn primary w-open" href="${connectorURI}" target="_blank" rel="noopener">Open in World App</a>
       <div class="w-wait"><span class="w-spin"></span> Waiting for you to verify in the ${app}…</div>`);
   }
@@ -497,7 +519,7 @@ function renderBorrower(){
         widget.open(`
           <div class="w-title">Verify with World ID</div>
           <div class="w-sub">Scan with the World App, or open it on this device. World returns proof of human, never your identity.</div>
-          <div class="w-qr mock"><img alt="World ID QR (demo)" src="/api/qr?data=${encodeURIComponent('https://world.org/verify?demo=marumaru')}"><span class="w-demoribbon">Demo mode</span></div>
+          <div class="w-qr mock"><img alt="World ID QR (demo)" src="/api/qr?data=${encodeURIComponent('https://world.org/verify?demo=marumaru')}" onerror="this.replaceWith(demoQR())"><span class="w-demoribbon">Demo mode</span></div>
           <button class="btn primary w-open" id="wid-sim">Simulate World App verification</button>
           <div class="w-wait">No World creds set. This is the labeled demo path, the flow completes locally.</div>`);
         $('#wid-sim').onclick = async () => {
