@@ -1,0 +1,8 @@
+{
+  "parent": "marumaru.eth",
+  "ethRegistry": "0x657ea849311d3d5823348dded7c2aaafb3ede09e",
+  "userRegistry": "0x35CbA5174005B6A4c4347bFb80161C7997E06130",
+  "resolver": "0xfC05b1673532d12328e1557F126Ef10D0D286B83",
+  "provisionedBy": "0xe97d2Aed77a001efAA0577809aB1CEcD81f815dB",
+  "note": "ENSv2 Sepolia beta — addresses re-confirmed at event"
+}
