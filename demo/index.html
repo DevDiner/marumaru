@@ -56,7 +56,60 @@
   };
   const J = (obj, status=200) => new Response(JSON.stringify(obj), { status, headers:{'content-type':'application/json'} });
   const now = () => Math.floor(Date.now()/1000);
-  const namehashDemo = 'client-mock (deploy the /api backend for the real EIP-137 namehash)';
+
+  // ── LIVE ENS on Sepolia, straight from the BROWSER (no backend) ──────────────────────────────────
+  // The Sepolia RPC allows CORS (access-control-allow-origin:*), so a static page can read the real
+  // on-chain marks itself via a raw eth_call to our deployed resolver's ENSIP-10 resolve(). Namehashes
+  // are precomputed (deterministic; the browser has no keccak). This makes the DEPLOYED demo genuinely
+  // live-on-Sepolia — the mint receipt shows the REAL namehash + resolver, and the passport/lender
+  // views read the REAL marks. Verified 2026-09-27.
+  const ENS = {
+    rpc: 'https://ethereum-sepolia-rpc.publicnode.com',
+    resolver: '0xfC05b1673532d12328e1557F126Ef10D0D286B83',
+    // precomputed EIP-137 namehashes (browser has no keccak); + DNS-encoded name for resolve()
+    node: { aiko: '0x7c70461ac5f453cc85c9e2040129a27c2dd458fea490c6340c230a18f3b8810b',
+            kenji: '0x440cb07ad5eabfe5ca40a9e032921b38d22a0faca8622c1076d7900c0599ff7f' },
+    dns:  { aiko: '0x0461696b6f086d6172756d6172750365746800',
+            kenji: '0x056b656e6a69086d6172756d6172750365746800' },
+  };
+  // text(bytes32,string) selector 0x59d1d43c ; resolve(bytes,bytes) selector 0x9061b923
+  const strToHex = (s) => Array.from(s).map(c => c.charCodeAt(0).toString(16).padStart(2,'0')).join('');
+  const word = (h) => h.toString(16).padStart(64,'0');
+  const encStr = (s) => { const b = strToHex(s); const len = s.length; return word(len) + b.padEnd(Math.ceil(b.length/64)*64,'0'); };
+  // build resolve(dns, text(node,key)) calldata, pure-JS (no ethers)
+  function resolveCalldata(nameKey, key) {
+    const node = ENS.node[nameKey], dns = ENS.dns[nameKey].slice(2);
+    // text(node,key): selector + node + offset(0x40) + encStr(key)
+    const inner = '59d1d43c' + node.slice(2) + word(0x40) + encStr(key);
+    // resolve(bytes name, bytes data): selector + off_name(0x40) + off_data + name + data
+    const nameEnc = word(dns.length/2) + dns.padEnd(Math.ceil(dns.length/64)*64,'0');
+    const dataEnc = word(inner.length/2) + inner.padEnd(Math.ceil(inner.length/64)*64,'0');
+    const offData = 0x40 + (nameEnc.length/2);
+    return '0x9061b923' + word(0x40) + word(offData) + nameEnc + dataEnc;
+  }
+  // decode resolve()'s returned bytes → the wrapped text() string
+  function decodeResolveString(result) {
+    if (!result || result === '0x') return '';
+    const h = result.slice(2);
+    const o = parseInt(h.slice(0,64),16)*2, len = parseInt(h.slice(o,o+64),16), inner = h.slice(o+64, o+64+len*2);
+    const so = parseInt(inner.slice(0,64),16)*2, sl = parseInt(inner.slice(so,so+64),16), body = inner.slice(so+64, so+64+sl*2);
+    let s=''; for(let i=0;i<body.length;i+=2){const c=parseInt(body.substr(i,2),16); if(c) s+=String.fromCharCode(c);} return s;
+  }
+  async function ensLiveMarks(nameKey) {
+    if (!ENS.node[nameKey]) return null;   // only the deployed demo passports resolve on-chain
+    const keys = ['maru.income','maru.savings','maru.human','maru.dsr','maru.income_band','maru.assurance'];
+    const out = {};
+    for (const k of keys) {
+      try {
+        const r = await NATIVE(ENS.rpc, { method:'POST', headers:{'content-type':'application/json'},
+          body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'eth_call', params:[{ to: ENS.resolver, data: resolveCalldata(nameKey, k) }, 'latest'] }) });
+        const j = await r.json();
+        const v = decodeResolveString(j.result);
+        if (v) out[k.replace('maru.','').replace('income_band','incomeBand')] = v;
+      } catch { /* one key failed — skip */ }
+    }
+    return Object.keys(out).length ? out : null;
+  }
 
   // The persona figures the server holds — mirrored here so mock marks match the real flow.
   const PERSONAS = { aiko:{holder:'Aiko Tanaka',income:12000,savings:62500,debt:3600}, kenji:{holder:'Kenji Sato',income:7500,savings:22000,debt:3750} };
@@ -71,10 +124,13 @@
     return backend;
   }
 
-  // Handle one mocked route. Returns a Response or null (null → let native fetch run).
-  function mockRoute(method, path, body, url){
+  // Handle one mocked route. Returns a Response or null (null → let native fetch run). ASYNC because the
+  // ENS reads hit Sepolia live.
+  async function mockRoute(method, path, body, url){
     const db = store.p;
-    if (path === '/api/world-config') return J({ mode:'mock', env:'staging', action:'marumaru-issue', onchain:false, resolver:'', _clientmock:true });
+    // world-config: ENS IS live on Sepolia (we read the resolver directly from the browser), so report
+    // onchain:true + the real resolver → the mint receipt shows "on-chain", not "mock".
+    if (path === '/api/world-config') return J({ mode:'mock', env:'staging', action:'marumaru-issue', onchain:true, resolver: ENS.resolver, _clientmock:true });
     if (path === '/api/sign-request') return J({ sig:'0xMOCK', nonce:'mock-nonce', created_at:0, expires_at:0 });
     if (path === '/api/verify-human') {
       const s = body.idkitResponse||''; const parts = String(s).split(':');
@@ -107,17 +163,26 @@
       const marks = { income:'pass', savings:'pass', human:'verified', assurance:level, incomeBand:bandOf(inc) };
       db[label] = { owner:'0xB0B', nullifier:nf, soulbound:true, marks, lenders:{}, expiry, sub:'' };
       store.p = db;
-      return J({ status:'issued', marks, expiry, namehash: namehashDemo, sub:'' });
+      // real EIP-137 namehash if this label is a deployed on-chain passport; else compute-less fallback note.
+      const nh = ENS.node[label] || null;
+      return J({ status:'issued', marks, expiry, namehash: nh || ('0x' + '0'.repeat(64)), sub:'', onchain: !!nh });
     }
     const pm = path.match(/^\/api\/passport\/(.+)$/);
-    if (pm) { const rec = db[decodeURIComponent(pm[1])]; return rec ? J(rec) : J({ error:'no passport' }, 404); }
+    if (pm) {
+      const label = decodeURIComponent(pm[1]);
+      // LIVE: if this label resolves on Sepolia, return the REAL on-chain marks (not the local store).
+      const live = await ensLiveMarks(label);
+      if (live) return J({ label, owner:'0xB0B', soulbound:true, marks: live, lenders:(db[label]?.lenders)||{}, expiry: db[label]?.expiry || (now()+30*86400), sub:'', onchain:true });
+      const rec = db[label]; return rec ? J(rec) : J({ error:'no passport' }, 404);
+    }
     if (path === '/api/grant') { const {label,lender,days}=body; if(db[label]){ db[label].lenders=db[label].lenders||{}; db[label].lenders[lender]=now()+ (days||14)*86400; store.p=db; } return J({ ok:true }); }
     if (path === '/api/revoke') { const {label,lender}=body; if(db[label]&&db[label].lenders){ delete db[label].lenders[lender]; store.p=db; } return J({ ok:true, revoked:lender }); }
     const dm = path.match(/^\/api\/detail\/(.+)$/);
     if (dm) { const label=decodeURIComponent(dm[1]); const lender=url.searchParams.get('lender'); const rec=db[label];
       const authed = rec && rec.lenders && rec.lenders[lender] > now();
       if (!authed) return J({ authorized:false, expired:false });
-      return J({ authorized:true, marks:rec.marks, provenance:{attestor:'reclaim-protocol (mock)',proofRef:null,attestedAt:now(),expiry:rec.expiry}, source:'zktls-attested', note:'client-mock demo' });
+      const live = await ensLiveMarks(label);   // consented → show the REAL on-chain marks
+      return J({ authorized:true, marks: live || rec.marks, provenance:{attestor:'reclaim-protocol (mock)',proofRef:null,attestedAt:now(),expiry:rec.expiry}, source: live?'ens-onchain-sepolia':'zktls-attested', note: live?'live from Sepolia resolver':'client-mock demo' });
     }
     if (path === '/api/qr') { return null; }  // let it 404 → the widget already handles a missing QR image
     // bank auth wall — client mock: treat as logged-out (the popup flow needs a server; mock returns 401)
@@ -134,7 +199,7 @@
     window.MARU_CLIENTMOCK = true;                                                        // flag: no backend (UI adapts the bank step)
     const method = (init&&init.method)||'GET';
     let body = {}; try { body = init&&init.body ? JSON.parse(init.body) : {}; } catch {}
-    const res = mockRoute(method, p, body, url);
+    const res = await mockRoute(method, p, body, url);
     return res || NATIVE(input, init);
   };
 })();
