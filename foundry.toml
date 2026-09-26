@@ -1,5 +1,6 @@
 [profile.default]
 src = "contracts/src"
+out = "contracts/out" 
 test = "contracts/test"
 script = "contracts/script"
 solc = "0.8.24"
